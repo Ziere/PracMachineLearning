@@ -35,7 +35,7 @@ library(randomForest)
 Setting the working path:
 
 ```{r}
-setwd("C:/Data Scientific/Practical Machine Learning")
+setwd("C:/Data Scientific/Practical Machine Learning/PracMachineLearning")
 ```
 
 Downloading the files and opening the both files:
