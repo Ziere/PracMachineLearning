@@ -1,0 +1,150 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Francisco Moreno Arcas"
+date: "Friday, February 20, 2015"
+output: html_document
+---
+
+Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+Data 
+
+The training data for this project are available here: 
+
+<https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv>
+
+The test data are available here: 
+
+<https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv>
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment. 
+
+Course Project
+
+Loading libraries:
+
+```{r}
+library(ggplot2)
+library(caret)
+library(rpart)
+library(randomForest)
+```
+
+Setting the working path:
+
+```{r}
+setwd("C:/Data Scientific/Practical Machine Learning")
+```
+
+Downloading the files and opening the both files:
+
+```{r, cache=TRUE}
+urldata <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+urltest <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+download.file(urldata,'training.csv')
+download.file(urltest,'testing.csv')
+
+data <- read.csv("training.csv",stringsAsFactors=FALSE)
+datatest <- read.csv("testing.csv",stringsAsFactors=FALSE)
+```
+
+Cleaning the data:
+
+We remove all the columns with the numbers of NA is higher than 90% of the total of the field of this columns.
+
+Also we remove all the non-numeric data, the principal reason is to get a quick result using specially the random forest algorith.
+
+Tip: Never forget to add back the *classe* variable back to categorize the dataset.
+
+```{r}
+numberofNA <- function(x) sum(is.na(x))
+NAsPerColumn <- lapply(data,numberofNA)
+numericColumn <- lapply(data,is.numeric)
+removeLines <- NAsPerColumn < nrow(data) * 90/100 #90 of NAS
+removeLines <- removeLines & as.logical(numericColumn)
+
+data <- data[,c('classe',names(which(removeLines)))]
+datatest <- datatest[,c(names(which(removeLines)))]
+```
+
+We remove the *user_name* and the *X* because the don't give us usefull information for the predictive algorithms.
+
+```{r}
+data$user_name <- NULL
+data$X <- NULL
+
+data$classe <- as.factor(data$classe)
+```
+
+We make a small exploratory analisys over the *data$classe* variability:
+
+```{r}
+table(data$classe)
+```
+
+And the summary of the cropped data set:
+
+```{r}
+summary(data)
+```
+
+Creating the training and the testing datasets and fixing the random seed:
+
+```{r}
+set.seed('39640')
+
+inTrain <- createDataPartition(y = data$classe, p=0.7, list=FALSE)
+training <- data[inTrain,]
+testing <- data[-inTrain,]
+```
+
+Checking the amount of each classe in the two datasets we created:
+
+```{r}
+table(training$classe)
+table(testing$classe)
+```
+
+Make a first analisys using the method rpart used in class:
+
+```{r}
+mod1 <- train(classe ~ ., method="rpart", data=training)
+pred1 <- predict(mod1, testing, type="raw")
+```
+
+Check the result:
+
+```{r}
+confusionMatrix(pred1,testing$classe)
+```
+
+We will see this method don't give to us a good accuracy, then we will try another method, in this case using the algorithm randomForest, we study in the 3rd week of classes.
+
+```{r}
+mod2 <- randomForest(classe ~ .,data=training)
+pred2 <- predict(mod2, testing, type="class")
+```
+
+We check the result:
+
+```{r}
+confusionMatrix(pred2,testing$classe)
+```
+
+We can see with this method the accuracy is far enough to determine the classe of each row, with this model we will predict the programming assessment.
+
+To create te proper answers in file format we use the following function given by the course:
+
+```{r}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+```
+
